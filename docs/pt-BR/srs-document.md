@@ -6,7 +6,7 @@
 Este documento especifica os requisitos do Gatekeeper, um sistema **CIAM** (Customer Identity and Access Management) moderno e modular. O Gatekeeper é projetado para gerenciar identidades, autenticação, autorização e experiências de acesso em ambientes multi-tenant, com foco em usuários finais externos, diferindo dos tradicionais sistemas de **IAM** voltados a funcionários internos.
 
 ### 1.2 Escopo
-O sistema oferecerá uma infraestrutura robusta de **CIAM**, priorizando a segurança sem comprometer a performance. A plataforma dará suporte nativo a múltiplos métodos de autenticação (incluindo senhas, OTP, WebAuthn e login social), mecanismos avançados de autorização (RBAC, ABAC) e integração completa com o protocolo OAuth2 e OpenID Connect. Além disso, será disponibilizada como um serviço independente e desacoplado, capaz de ser integrado facilmente a múltiplas aplicações, sistemas e ambientes corporativos, garantindo flexibilidade e escalabilidade desde sua concepção.
+O sistema oferecerá uma infraestrutura robusta de **CIAM**, priorizando a segurança sem comprometer a performance. A plataforma dará suporte nativo a múltiplos métodos de autenticação (incluindo senhas, OTP, WebAuthn e login social), mecanismos avançados de autorização (RBAC, ABAC) e integração completa com o protocolo OAuth2 e OpenID Connect.
 
 Diferente de soluções baseadas em **IDaaS** (Identity as a Service), o Gatekeeper será implementado como um serviço local e autocontido, evitando latências adicionais introduzidas por chamadas externas a serviços terceiros.
 
@@ -31,7 +31,8 @@ Diferente de soluções baseadas em **IDaaS** (Identity as a Service), o Gatekee
   * [WebAuthn IANA Registry (RFC 8809)](https://www.rfc-editor.org/rfc/rfc8809.html)
 * **OTP (One-Time Password)**
   * [TOTP: Time-Based One-Time Password Algorithm (RFC 6238)](https://www.rfc-editor.org/rfc/rfc6238.html)
-  * [HOTP: HMAC-Based One-Time Password Algorithm (RFC 4226)](https://www.rfc-editor.org/rfc/rfc4226.html)
+* **Protocolo OPAQUE**
+  * [The OPAQUE Augmented PAKE Protocol](https://datatracker.ietf.org/doc/draft-irtf-cfrg-opaque/)
 * **Modelos de Autorização e Consentimento**
   * [Role-Based Access Control (ANSI INCITS 359-2012)](https://webstore.ansi.org/standards/incits/ansiincits3592012)
   * [NIST SP 800-162 – Guide to Attribute Based Access Control (ABAC)](https://csrc.nist.gov/publications/detail/sp/800-162/final)
@@ -52,12 +53,47 @@ Diferente de soluções baseadas em **IDaaS** (Identity as a Service), o Gatekee
 ---
 
 ## 2. Descrição Geral
+
 ### 2.1 Perspectiva do Produto
+O Gatekeeper será desenvolvido como um serviço modular e isolado, voltado exclusivamente à gestão de identidade e acesso em contextos de alta escala. Sua arquitetura foi pensada para oferecer pontos de integração padronizados, expostos via interfaces como REST e gRPC, sem impor dependência de plataforma ou linguagem. Ele poderá ser implantado localmente (on-premises) ou embarcado em soluções maiores, atuando como um núcleo de autenticação e autorização interoperável.
+
 ### 2.2 Funcionalidades do Produto
+* Autenticação baseada em senha
+* Suporte a autenticação passwordless (magic link, WebAuthn)
+* Suporte a autenticação adaptativa baseada em risco
+* Autorização com suporte a RBAC, ABAC e delegação de acesso (OAuth2)
+* Verificação multi-fator (MFA) com TOTP
+* Gerenciamento de identidades e provisionamento via SCIM 2.0
+* Federação de identidade com OpenID Connect e descoberta dinâmica
+* Isolamento multi-tenant com suporte a múltiplos projetos
+* Gerenciamento de sessões baseada em dispositivos
+* Registro e controle de consentimento conforme LGPD/GDPR
+* Auditoria de eventos de segurança e acessos sensíveis
+* Administração de usuários, permissões e configurações por projeto
+* Conformidade com normas como NIST 800-63B, ISO/IEC 27001 e 27701
+
 ### 2.3 Classes e Características dos Usuários
-### 2.4 Ambiente Operacional
-### 2.5 Restrições de Design e Implementação
-### 2.6 Premissas e Dependências
+
+| Classe de Usuário                | Descrição                                                                   | Acessos e Responsabilidades Principais                                             |
+|----------------------------------|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| **Usuários Finais**              | Indivíduos externos que utilizam os serviços das aplicações integradas      | Autenticação, recuperação de conta, gestão de perfil, consentimento de acesso      |
+| **Desenvolvedores**              | Técnicos que integram suas aplicações ao Gatekeeper                         | Registro de clientes, configuração de fluxos OAuth2/OIDC, consumo de APIs          |
+| **Sistemas Terceiros (Clients)** | Aplicações confiáveis que solicitam autenticação/autorização                | Requisição de tokens, autenticação federada, acesso a recursos protegidos          |
+
+### 2.4 Restrições de Design e Implementação
+* O sistema deverá adotar a arquitetura hexagonal (ports and adapters), visando isolamento de lógica de domínio, testabilidade e flexibilidade na troca de tecnologias externas.
+* Toda comunicação deverá ocorrer exclusivamente sobre canais seguros (TLS 1.2+ obrigatório). Para ações sensíveis, essas deverão ocorrer por meio do gRPC.
+* O sistema não armazenará sessões em banco relacional ou distribuído, devendo manter os tokens em memória ou mecanismos externos compatíveis (ex.: Redis).
+* As interfaces públicas (REST/gRPC) deverão respeitar versionamento e autenticação forte (ex.: mTLS, OAuth2 Client Credentials).
+* A interface WebAuthn só deverá ser exposta em navegadores que suportem WebCrypto API.
+* Não será oferecido suporte a dispositivos legados sem HTTPS ou sem suporte mínimo a operações criptográficas modernas.
+
+### 2.5 Premissas e Dependências
+* Assume-se que os consumidores do Gatekeeper implementarão corretamente o fluxo de autenticação OAuth2/OpenID Connect.
+* Usuários finais utilizarão navegadores ou dispositivos compatíveis com os padrões modernos de autenticação (TOTP, WebAuthn, etc.).
+* A sincronização de tempo entre cliente e servidor é fundamental para o funcionamento correto de TOTP.
+* O serviço de e-mail e SMS usado para MFA e recuperação de conta será fornecido externamente e deverá estar operacional.
+* A camada de rede entre os componentes do sistema e os sistemas consumidores será confiável, com baixa latência e alta disponibilidade.
 
 ---
 
