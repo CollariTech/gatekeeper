@@ -98,13 +98,184 @@ O Gatekeeper será desenvolvido como um serviço modular e isolado, voltado excl
 ---
 
 ## 3. Requisitos de Interface Externa
+
 ### 3.1 Interfaces de Software
+
+#### 3.1.1 APIs REST
+O sistema disponibilizará um conjunto de APIs REST para operações de autenticação, autorização e gerenciamento de identidades, seguindo as seguintes diretrizes:
+
+* **Versionamento de API:** Todas as rotas serão prefixadas com `/api/v{n}` para garantir compatibilidade em atualizações futuras
+* **Formato de mensagens:** JSON (application/json) para requisições e respostas
+* **Documentação:** OpenAPI 3.1 com schemas validados e exemplos funcionais
+* **Autenticação da API:** OAuth 2.0 Client Credentials e Bearer Tokens
+* **Tratamento de erros:** Respostas de erro padronizadas com código HTTP apropriados e detalhamento em formato Problem JSON (RFC 7807)
+
+#### 3.1.2 Interface gRPC
+Para operações sensíveis e de alta performance, o Gatekeeper oferecerá interfaces gRPC com as seguintes características:
+
+* **Autenticação mTLS obrigatória** para conexões gRPC
+* **Buffers Protocol** para definição de contratos de serviço
+
 ### 3.2 Interfaces de Comunicação
 ### 3.3 Interfaces de Identidade Externa
 
 ---
 
 ## 4. Funcionalidades do Sistema
+
+### 4.1 Gestão de Identidades
+
+#### 4.1.1 Descrição e Prioridade
+Sistema central de gerenciamento de identidades de usuários finais externos em contexto multi-tenant, com suporte a diferentes esquemas de dados por projeto. Permite a criação, atualização, pesquisa e exclusão de identidades digitais.
+
+**Prioridade:** Alta - Componente fundamental do sistema CIAM.
+
+#### 4.1.2 Requisitos Funcionais
+* RF4.1.1: O sistema deve permitir a criação de identidades de usuários com dados básicos (nome, email, telefone) e atributos customizados por tenant.
+* RF4.1.2: O sistema deve suportar a implementação do padrão SCIM 2.0 para provisionamento e sincronização de identidades.
+* RF4.1.3: O sistema deve permitir a atualização parcial ou total de atributos de identidade.
+* RF4.1.4: O sistema deve permitir a desativação temporária de usuários sem exclusão permanente de dados.
+* RF4.1.5: O sistema deve implementar mecanismos de marcação de contas para exclusão conforme requisitos LGPD/GDPR.
+* RF4.1.6: O sistema deve suportar a vinculação de múltiplos métodos de autenticação a uma única identidade.
+* RF4.1.7: O sistema deve prover mecanismos para verificação de atributos de identidade (ex.: email, telefone).
+
+#### 4.1.3 Entradas/Saídas
+* **Entradas:** Dados de perfil de usuário, credenciais de autenticação, solicitações SCIM.
+* **Saídas:** Representações JSON de usuários, respostas de conformidade SCIM, notificações de eventos de ciclo de vida.
+
+#### 4.1.4 Tratamento de Erros
+* Validação de formato e unicidade de atributos-chave como email e telefone.
+* Tratamento de conflitos de identidade em operações de fusão ou importação.
+* Verificação de consistência em operações de atualização em massa.
+* Propagação segura de eventos de alteração de identidade para sistemas integrados.
+
+### 4.2 Autenticação
+
+#### 4.2.1 Descrição e Prioridade
+Conjunto de serviços responsáveis por validar a identidade dos usuários através de múltiplos métodos, gerenciar sessões seguras e implementar protocolo OpenID Connect.
+
+**Prioridade:** Alta - Componente crítico de segurança.
+
+#### 4.2.2 Requisitos Funcionais
+* RF4.2.1: O sistema deve oferecer autenticação baseada em senha com implementação do protocolo OPAQUE para autenticação sem exposição de senha.
+* RF4.2.2: O sistema deve suportar autenticação passwordless via WebAuthn (FIDO2).
+* RF4.2.3: O sistema deve implementar autenticação via magic links enviados por email.
+* RF4.2.4: O sistema deve suportar autenticação social com provedores externos via OpenID Connect.
+* RF4.2.5: O sistema deve implementar Multi-Factor Authentication (MFA) baseado em TOTP (RFC 6238).
+* RF4.2.6: O sistema deve detectar e mitigar tentativas de força bruta e ataques de credential stuffing.
+* RF4.2.7: O sistema deve implementar mecanismos de autenticação adaptativa baseada em análise de risco.
+* RF4.2.8: O sistema deve provisionar sessões baseadas em dispositivos com capacidade de revogação individual.
+
+#### 4.2.3 Entradas/Saídas
+* **Entradas:** Credenciais de usuário, informações de contextização (dispositivo, localização, comportamento), desafios criptográficos.
+* **Saídas:** Tokens de acesso, tokens de identidade, tokens de atualização, informações de sessão.
+
+#### 4.2.4 Tratamento de Erros
+* Limitação de tentativas por IP/usuário para prevenção de ataques de força bruta.
+* Monitoramento de anomalias como múltiplas tentativas de acesso de localizações geograficamente distintas.
+* Alertas de segurança para operações sensíveis como alteração de método de autenticação principal.
+* Registro detalhado de tentativas de autenticação para análise.
+
+### 4.3 Autorização
+
+#### 4.3.1 Descrição e Prioridade
+Serviços responsáveis por controlar o acesso a recursos protegidos através de diferentes modelos de autorização (RBAC, ABAC) e gestão de permissões.
+
+**Prioridade:** Alta - Componente essencial para segurança de recursos.
+
+#### 4.3.2 Requisitos Funcionais
+* RF4.3.1: O sistema deve implementar autorização baseada em papéis (RBAC) com suporte a hierarquias de papéis.
+* RF4.3.2: O sistema deve implementar autorização baseada em atributos (ABAC) para decisões de acesso contextuais.
+* RF4.3.3: O sistema deve suportar políticas de autorização por tenant e por aplicação.
+* RF4.3.4: O sistema deve implementar o protocolo OAuth 2.0 para delegação de acesso, incluindo fluxos modernos como PKCE.
+* RF4.3.5: O sistema deve implementar escopo de acesso granular para tokens OAuth.
+* RF4.3.6: O sistema deve suportar OAuth 2.0 Pushed Authorization Requests (RFC 9126).
+* RF4.3.7: O sistema deve suportar OAuth 2.0 Rich Authorization Requests (RFC 9396).
+* RF4.3.8: O sistema deve prover mecanismos para validação de tokens de acesso por APIs protegidas.
+
+#### 4.3.3 Entradas/Saídas
+* **Entradas:** Solicitações de autorização, políticas de acesso, contexto de execução.
+* **Saídas:** Decisões de acesso (permitir/negar), tokens com escopo limitado, metadados de autorização.
+
+#### 4.3.4 Tratamento de Erros
+* Validação de integridade de tokens e assinaturas.
+* Verificação de validade temporal e status de revogação.
+* Análise de escopo solicitado versus escopo permitido.
+* Registro de tentativas de acesso não autorizado a recursos protegidos.
+
+### 4.4 Gestão de Consentimento
+
+#### 4.4.1 Descrição e Prioridade
+Serviços para registro, gestão e auditoria de consentimentos de usuários para compartilhamento de dados conforme LGPD e GDPR.
+
+**Prioridade:** Alta - Componente essencial para conformidade legal.
+
+#### 4.4.2 Requisitos Funcionais
+* RF4.4.1: O sistema deve implementar registro explícito de consentimento para compartilhamento de dados pessoais.
+* RF4.4.2: O sistema deve permitir a revogação de consentimentos previamente concedidos.
+* RF4.4.3: O sistema deve manter histórico imutável de consentimentos para fins de auditoria.
+* RF4.4.4: O sistema deve implementar fluxos de transparência conforme requisitos regulatórios.
+* RF4.4.5: O sistema deve usar linguagem clara e acessível na solicitação de consentimentos.
+* RF4.4.6: O sistema deve implementar mecanismos de expiração automática de consentimentos conforme configuração.
+
+#### 4.4.3 Entradas/Saídas
+* **Entradas:** Solicitações de consentimento, revogações de consentimento, configurações de policies.
+* **Saídas:** Registros de consentimento, relatórios de auditoria, notificações de alteração de status.
+
+#### 4.4.4 Tratamento de Erros
+* Verificação de integridade e não-repúdio de registros de consentimento.
+* Validação de conformidade de políticas de privacidade associadas a consentimentos.
+* Alertas para tentativas de acesso a dados sem consentimento válido.
+* Mecanismos de contingência para situações de falha no registro de consentimento.
+
+### 4.5 Federação de Identidade
+
+#### 4.5.1 Descrição e Prioridade
+Implementação de protocolos e mecanismos para estabelecimento de confiança e intercâmbio de identidades entre múltiplos provedores e consumidores.
+
+**Prioridade:** Média - Importante para ambientes complexos com múltiplos sistemas.
+
+#### 4.5.2 Requisitos Funcionais
+* RF4.5.1: O sistema deve implementar o padrão OpenID Connect para federação de identidades.
+* RF4.5.2: O sistema deve suportar descoberta dinâmica via OpenID Connect Discovery 1.0.
+* RF4.5.3: O sistema deve implementar OpenID Connect Federation 1.0 para federação em larga escala.
+* RF4.5.4: O sistema deve suportar OpenID Connect for Identity Assurance 1.0 para verificação de identidade.
+* RF4.5.5: O sistema deve permitir mapeamento configurável de atributos entre diferentes provedores de identidade.
+* RF4.5.6: O sistema deve implementar mecanismos de linking de contas entre múltiplos provedores de identidade.
+
+#### 4.5.3 Entradas/Saídas
+* **Entradas:** Solicitações de autenticação federada, metadados de provedores, configurações de mapeamento.
+* **Saídas:** Tokens de identidade interoperáveis, metadados de federação, logs de transação federada.
+
+#### 4.5.4 Tratamento de Erros
+* Validação criptográfica de assinaturas entre provedores federados.
+* Verificação de validade temporal de metadados de federação.
+* Tratamento de discrepâncias em atributos mapeados entre sistemas.
+* Monitoramento de anomalias em padrões de federação.
+
+### 4.6 Auditoria e Conformidade
+
+#### 4.6.1 Descrição e Prioridade
+Serviços para registro imutável de eventos de segurança, geração de evidências de conformidade e suporte a processos de auditoria.
+
+**Prioridade:** Alta - Essencial para conformidade regulatória.
+
+#### 4.7.2 Requisitos Funcionais
+* RF4.6.1: O sistema deve registrar eventos de segurança em formato imutável e não-repudiável.
+* RF4.6.2: O sistema deve implementar trilhas de auditoria para todas as operações administrativas.
+* RF4.6.3: O sistema deve gerar relatórios de conformidade com LGPD, GDPR e outras regulamentações aplicáveis.
+* RF4.6.4: O sistema deve registrar eventos de autenticação e autorização com metadados contextuais.
+* RF4.6.5: O sistema deve implementar alertas para eventos de segurança críticos.
+
+#### 4.7.3 Entradas/Saídas
+* **Entradas:** Eventos de sistema, ações de usuário, configurações de auditoria.
+* **Saídas:** Registros de auditoria, relatórios de conformidade, alertas de segurança.
+
+#### 4.7.4 Tratamento de Erros
+* Verificação de integridade de registros de auditoria.
+* Mecanismos de persistência redundante para logs críticos.
+* Monitoramento contínuo de falhas no registro de eventos.
+* Alerta imediado para tentativas de manipulação de logs.
 
 ---
 
