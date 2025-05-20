@@ -280,19 +280,60 @@ Serviços para registro imutável de eventos de segurança, geração de evidên
 ---
 
 ## 5. Requisitos Não Funcionais
+
 ### 5.1 Segurança
+
+- **Criptografia**: TLS 1.3+ para comunicação externa, mTLS para comunicação interna crítica, AES-256-GCM para dados em repouso
+- **Autenticação de APIs**: mTLS ou OAuth2 Client Credentials para APIs administrativas
+- **Proteção contra Ataques**: Rate limiting (100 tentativas/hora por IP), proteção contra força bruta, timing attacks e CSRF
+- **Isolamento Multi-tenant**: Completo isolamento lógico entre tenants com validação rigorosa de contexto
+- **Gerenciamento de Chaves**: Rotação automática a cada 90 dias com suporte a HSM para chaves críticas
+
 ### 5.2 Desempenho
+
+- **Latência**: Máximo 200ms para autenticação (P95), 50ms para validação de tokens (P99), 100ms para APIs REST (P95)
+- **Throughput**: Mínimo 50.000 RPS para leitura, 10.000 RPS para escrita, 25.000 tokens/segundo por instância
+- **Capacidade**: Suporte a 10.000 autenticações simultâneas por instância, até 100 milhões de usuários por tenant
+- **Recursos**: Máximo 70% CPU e 80% memória em operação normal
+
 ### 5.3 Disponibilidade
+
+- **SLA**: 99.9% de uptime mensal (máximo 43 minutos de downtime)
+- **Recovery**: RTO de 5 minutos, RPO de 1 minuto, MTBF de 2.000 horas para componentes principais
+- **Tolerância a Falhas**: Redundância ativa-passiva, failover automático em 30 segundos, circuit breakers para dependências externas
+- **Manutenção**: Deploy sem downtime via blue-green deployments, rollback automático em caso de problemas
+
 ### 5.4 Escalabilidade
+
+- **Auto-scaling**: Escalamento automático baseado em CPU, memória e latência (1 a 100 instâncias)
+- **Distribuição**: Load balancing inteligente com detecção de falhas
+- **Dados**: Sharding horizontal por tenant com redistribuição automática
+- **Otimização**: I/O assíncrono, processamento paralelo, gestão eficiente de memória
+
 ### 5.5 Observabilidade
+
+- **Métricas**: Coleta de métricas de sistema e aplicação com resolução de 1 segundo
+- **Logging**: Logs estruturados em JSON, retenção de 2 anos para auditoria, 90 dias para troubleshooting
+- **Tracing**: Distributed tracing completo, error tracking automático, profiling contínuo
+
 ### 5.6 Conformidade
+
+- **Proteção de Dados**: Conformidade com LGPD e GDPR, gestão granular de consentimento, direito ao esquecimento
+- **Padrões de Segurança**: NIST Framework, ISO 27001, SOC 2 Type II, OWASP Top 10
+- **Auditoria**: Auditorias internas trimestrais, externas anuais, penetration testing semestral
+- **Documentação**: Políticas atualizadas, registros de compliance, relatórios automáticos para órgãos reguladores
 
 ---
 
 ## 6. Outros Requisitos
+
 ### 6.1 Processo de Rotação de Chaves
-### 6.2 Estratégias de Mitigação de Ataques
-### 6.3 Auditoria e Conformidade
+
+#### 6.1.1 Rotação Automática de Chaves
+- **Chaves de Assinatura**: Rotação automática a cada 30 dias com sobreposição de 7 dias para transição
+- **Chaves de Criptografia**: Rotação a cada 90 dias para chaves de banco de dados e sessões
+- **Certificados TLS**: Renovação automática 30 dias antes do vencimento via ACME protocol
+- **Chaves de API**: Rotação programável com notificação prévia aos sistemas integrados
 
 ---
 
