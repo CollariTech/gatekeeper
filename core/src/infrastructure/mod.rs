@@ -1,1 +1,1 @@
-pub mod hmac_token_codec;
+pub mod token;
